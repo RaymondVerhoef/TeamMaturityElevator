@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -15,13 +16,20 @@ export default function Results() {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   
-  // Fetch assessment data
-  const { data: assessment, isLoading: isLoadingAssessment } = useQuery<Assessment>({
+  // Fetch assessment data with refetch capability
+  const { 
+    data: assessment, 
+    isLoading: isLoadingAssessment,
+    refetch: refetchAssessment,
+    error: assessmentError
+  } = useQuery<Assessment>({
     queryKey: [`/api/assessments/${assessmentId}`],
+    retry: 3,
+    staleTime: 0 // Always get fresh data
   });
   
   // Fetch team data
-  const { data: team } = useQuery<Team>({
+  const { data: team, isLoading: isLoadingTeam } = useQuery<Team>({
     queryKey: [`/api/teams/${assessment?.teamId}`],
     enabled: !!assessment?.teamId,
   });
@@ -35,8 +43,24 @@ export default function Results() {
     // In a real implementation, this would generate a PDF
   };
   
+  // If assessment results are missing, try to refetch periodically
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    
+    if (assessment && !assessment.results) {
+      // If we have assessment but no results, it might be in the process of being finalized
+      timer = setTimeout(() => {
+        refetchAssessment();
+      }, 1500);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [assessment, refetchAssessment]);
+  
   // If loading, show loading state
-  if (isLoadingAssessment || !assessment?.results) {
+  if (isLoadingAssessment || isLoadingTeam) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -44,6 +68,47 @@ export default function Results() {
             <div className="text-center">
               <p className="text-lg font-semibold text-primary">Laden...</p>
               <p className="text-muted-foreground mt-2">Assessment resultaten worden opgehaald</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  // Check if assessment exists
+  if (!assessment) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-lg font-semibold text-primary">Assessment niet gevonden</p>
+              <p className="text-muted-foreground mt-2">Het opgegeven assessment ID bestaat niet.</p>
+              <Button className="mt-4" asChild>
+                <Link href="/">Terug naar dashboard</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  // If assessment has no results yet, show waiting state
+  if (!assessment.results) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-lg font-semibold text-primary">Resultaten worden verwerkt...</p>
+              <p className="text-muted-foreground mt-2">Even geduld terwijl de assessment resultaten worden berekend.</p>
+              <Button 
+                className="mt-4" 
+                onClick={() => refetchAssessment()}
+              >
+                Probeer opnieuw
+              </Button>
             </div>
           </CardContent>
         </Card>
