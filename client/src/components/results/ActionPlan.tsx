@@ -256,20 +256,35 @@ export default function ActionPlan({ results, assessmentId }: ActionPlanProps) {
   // Mutation to save the action plan
   const saveActionPlanMutation = useMutation({
     mutationFn: async (items: ActionItem[]) => {
-      // apiRequest expects the first parameter to be a URL and the second to be options
-      const result = await fetch(`/api/assessments/${assessmentId}/action-plan`, {
-        method: existingActionPlan ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ items })
-      });
-      
-      if (!result.ok) {
-        throw new Error('Failed to save action plan');
+      try {
+        // Show saving toast
+        toast({
+          title: "Actieplan opslaan...",
+          description: "Bezig met opslaan van het actieplan.",
+        });
+        
+        // Make the API request
+        const result = await fetch(`/api/assessments/${assessmentId}/action-plan`, {
+          method: existingActionPlan ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ items })
+        });
+        
+        // Check if the request was successful
+        if (!result.ok) {
+          const errorData = await result.json();
+          console.error("Error saving action plan:", errorData);
+          throw new Error(errorData.message || 'Failed to save action plan');
+        }
+        
+        // Parse and return the response
+        return await result.json();
+      } catch (error) {
+        console.error("Exception in save action plan:", error);
+        throw error;
       }
-      
-      return await result.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/assessments/${assessmentId}/action-plan`] });
@@ -278,10 +293,11 @@ export default function ActionPlan({ results, assessmentId }: ActionPlanProps) {
         description: "Het actieplan is opgeslagen en kan worden gedeeld met het team.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Mutation error:", error);
       toast({
         title: "Fout bij opslaan",
-        description: "Het actieplan kon niet worden opgeslagen. Probeer het later opnieuw.",
+        description: error instanceof Error ? error.message : "Het actieplan kon niet worden opgeslagen. Probeer het later opnieuw.",
         variant: "destructive"
       });
     }
