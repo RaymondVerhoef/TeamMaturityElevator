@@ -157,6 +157,22 @@ export default function Results() {
                   />
                 </div>
                 
+                {/* Plateau Legend */}
+                <div className="flex items-center justify-center gap-4 mb-4 text-xs text-muted-foreground">
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-gray-200 mr-1" style={{ border: '1px dashed #CBD5E0' }}></div>
+                    <span>Reactief (1.0-1.7)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-gray-200 mr-1" style={{ border: '1px dashed #CBD5E0' }}></div>
+                    <span>Proactief (1.8-2.4)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-gray-200 mr-1" style={{ border: '1px solid #CBD5E0' }}></div>
+                    <span>Innovatief (2.5-3.0)</span>
+                  </div>
+                </div>
+                
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
