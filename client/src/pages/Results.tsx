@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { PLATEAUS } from "@/lib/constants";
 import Header from "@/components/Header";
 import SpiderChart from "@/components/results/SpiderChart";
 import ResultSummary from "@/components/results/ResultSummary";
+import ActionPlan from "@/components/results/ActionPlan";
 import type { Assessment, Team } from "@shared/schema";
 
 export default function Results() {
@@ -241,6 +242,12 @@ export default function Results() {
             </Card>
             
             <ResultSummary results={results} />
+          </div>
+          
+          {/* Action Plan Section */}
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-primary mb-4">Aanbevolen actieplan</h2>
+            <ActionPlan results={results} assessmentId={assessmentId} />
           </div>
         </div>
       </main>

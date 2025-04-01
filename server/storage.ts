@@ -1,10 +1,10 @@
 import { 
-  users, teams, assessments, answers,
+  users, teams, assessments, answers, actionPlans,
   type User, type InsertUser,
   type Team, type InsertTeam,
   type Assessment, type InsertAssessment,
   type Answer, type InsertAnswer,
-  type AssessmentResults
+  type AssessmentResults, type ActionPlan, type ActionPlanModel, type InsertActionPlan
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -31,6 +31,11 @@ export interface IStorage {
   getAnswer(assessmentId: number, questionId: string): Promise<Answer | undefined>;
   createAnswer(answer: InsertAnswer): Promise<Answer>;
   updateAnswer(id: number, answer: Partial<InsertAnswer>): Promise<Answer>;
+  
+  // Action Plan operations
+  getActionPlan(assessmentId: number): Promise<ActionPlan | undefined>;
+  createActionPlan(actionPlan: ActionPlan): Promise<ActionPlan>;
+  updateActionPlan(assessmentId: number, actionPlan: ActionPlan): Promise<ActionPlan>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -145,6 +150,71 @@ export class DatabaseStorage implements IStorage {
     }
     
     return updatedAnswer;
+  }
+  
+  // Action Plan methods
+  async getActionPlan(assessmentId: number): Promise<ActionPlan | undefined> {
+    const [actionPlan] = await db.select().from(actionPlans).where(eq(actionPlans.assessmentId, assessmentId));
+    
+    if (!actionPlan) {
+      return undefined;
+    }
+    
+    return {
+      id: actionPlan.id,
+      assessmentId: actionPlan.assessmentId,
+      items: actionPlan.items || [],
+      createdAt: actionPlan.createdAt || undefined,
+      updatedAt: actionPlan.updatedAt || undefined
+    };
+  }
+  
+  async createActionPlan(actionPlan: ActionPlan): Promise<ActionPlan> {
+    // Check if an action plan for this assessment already exists
+    const existingPlan = await this.getActionPlan(actionPlan.assessmentId);
+    
+    if (existingPlan) {
+      // If it exists, update it
+      return this.updateActionPlan(actionPlan.assessmentId, actionPlan);
+    }
+    
+    // Otherwise create a new action plan
+    const [newActionPlan] = await db.insert(actionPlans)
+      .values({
+        assessmentId: actionPlan.assessmentId,
+        items: actionPlan.items
+      })
+      .returning();
+    
+    return {
+      id: newActionPlan.id,
+      assessmentId: newActionPlan.assessmentId,
+      items: newActionPlan.items || [],
+      createdAt: newActionPlan.createdAt || undefined,
+      updatedAt: newActionPlan.updatedAt || undefined
+    };
+  }
+  
+  async updateActionPlan(assessmentId: number, actionPlan: ActionPlan): Promise<ActionPlan> {
+    const [updatedActionPlan] = await db.update(actionPlans)
+      .set({
+        items: actionPlan.items,
+        updatedAt: new Date()
+      })
+      .where(eq(actionPlans.assessmentId, assessmentId))
+      .returning();
+    
+    if (!updatedActionPlan) {
+      throw new Error(`Action plan for assessment with id ${assessmentId} not found`);
+    }
+    
+    return {
+      id: updatedActionPlan.id,
+      assessmentId: updatedActionPlan.assessmentId,
+      items: updatedActionPlan.items || [],
+      createdAt: updatedActionPlan.createdAt || undefined,
+      updatedAt: updatedActionPlan.updatedAt || undefined
+    };
   }
 }
 

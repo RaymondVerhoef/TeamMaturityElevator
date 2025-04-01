@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertTeamSchema, insertAssessmentSchema, insertAnswerSchema } from "@shared/schema";
+import { insertTeamSchema, insertAssessmentSchema, insertAnswerSchema, insertActionPlanSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -131,6 +131,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid answer data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to save answer" });
+    }
+  });
+  
+  // Action Plan routes
+  app.get("/api/assessments/:id/action-plan", async (req, res) => {
+    try {
+      const assessmentId = parseInt(req.params.id);
+      const actionPlan = await storage.getActionPlan(assessmentId);
+      
+      if (!actionPlan) {
+        return res.status(404).json({ message: "Action plan not found" });
+      }
+      
+      res.json(actionPlan);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch action plan" });
+    }
+  });
+  
+  app.post("/api/assessments/:id/action-plan", async (req, res) => {
+    try {
+      const assessmentId = parseInt(req.params.id);
+      
+      // Validate action plan data
+      const actionPlanData = {
+        ...req.body,
+        assessmentId
+      };
+      
+      // Create or update action plan
+      const actionPlan = await storage.createActionPlan(actionPlanData);
+      res.status(201).json(actionPlan);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid action plan data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to save action plan" });
+    }
+  });
+  
+  app.put("/api/assessments/:id/action-plan", async (req, res) => {
+    try {
+      const assessmentId = parseInt(req.params.id);
+      
+      // Validate action plan data
+      const actionPlanData = {
+        ...req.body,
+        assessmentId
+      };
+      
+      // Update action plan
+      const actionPlan = await storage.updateActionPlan(assessmentId, actionPlanData);
+      res.json(actionPlan);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid action plan data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update action plan" });
     }
   });
 

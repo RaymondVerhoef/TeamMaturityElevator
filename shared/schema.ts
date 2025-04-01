@@ -113,3 +113,45 @@ export type AssessmentResults = {
   overallPlateau: 1 | 2 | 3;
   recommendations: string[];
 };
+
+export type ActionItem = {
+  id: string;
+  description: string;
+  perspective: 'organization' | 'systems' | 'people' | 'processes';
+  priority: 'high' | 'medium' | 'low';
+  timeframe: 'short' | 'medium' | 'long';
+  plateauTarget: 1 | 2 | 3;
+  completed?: boolean;
+};
+
+export type ActionPlan = {
+  id?: number;
+  assessmentId: number;
+  items: ActionItem[];
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+// Action Plans Table
+export const actionPlans = pgTable("action_plans", {
+  id: serial("id").primaryKey(),
+  assessmentId: integer("assessment_id").notNull().references(() => assessments.id, { onDelete: 'cascade' }),
+  items: json("items").$type<ActionItem[]>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const actionPlansRelations = relations(actionPlans, ({ one }) => ({
+  assessment: one(assessments, {
+    fields: [actionPlans.assessmentId],
+    references: [assessments.id]
+  })
+}));
+
+export const insertActionPlanSchema = createInsertSchema(actionPlans).pick({
+  assessmentId: true,
+  items: true
+});
+
+export type InsertActionPlan = z.infer<typeof insertActionPlanSchema>;
+export type ActionPlanModel = typeof actionPlans.$inferSelect;
