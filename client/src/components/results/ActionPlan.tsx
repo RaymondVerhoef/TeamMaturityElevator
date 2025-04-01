@@ -256,12 +256,20 @@ export default function ActionPlan({ results, assessmentId }: ActionPlanProps) {
   // Mutation to save the action plan
   const saveActionPlanMutation = useMutation({
     mutationFn: async (items: ActionItem[]) => {
-      const url = `/api/assessments/${assessmentId}/action-plan`;
-      const options = {
+      // apiRequest expects the first parameter to be a URL and the second to be options
+      const result = await fetch(`/api/assessments/${assessmentId}/action-plan`, {
         method: existingActionPlan ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ items })
-      };
-      return await apiRequest(url, options);
+      });
+      
+      if (!result.ok) {
+        throw new Error('Failed to save action plan');
+      }
+      
+      return await result.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/assessments/${assessmentId}/action-plan`] });
@@ -314,11 +322,62 @@ export default function ActionPlan({ results, assessmentId }: ActionPlanProps) {
   };
   
   const handleExportPDF = () => {
+    // Show toast and create a downloadable "PDF"
     toast({
       title: "PDF wordt gegenereerd",
-      description: "Het actieplan wordt geëxporteerd naar PDF formaat.",
+      description: "Het actieplan wordt gedownload.",
     });
-    // In a real implementation, this would generate a PDF of the action plan
+
+    try {
+      // Prepare the action plan data
+      const contentLines = [
+        `# Actieplan voor ${results.overallPlateau === 1 ? 'Reactief' : results.overallPlateau === 2 ? 'Proactief' : 'Innovatief'} team`,
+        `Datum: ${new Date().toLocaleDateString('nl-NL')}`,
+        '',
+        '## Actiepunten:',
+        ''
+      ];
+      
+      // Add each action item
+      actionItems.forEach((item, index) => {
+        contentLines.push(`### ${index + 1}. ${item.description}`);
+        contentLines.push(`- Perspectief: ${perspectiveNames[item.perspective]}`);
+        contentLines.push(`- Prioriteit: ${priorityLabels[item.priority]}`);
+        contentLines.push(`- Tijdslijn: ${timeframeLabels[item.timeframe]}`);
+        contentLines.push(`- Doel plateau: ${PLATEAUS[`plateau${item.plateauTarget}`]?.name || `Plateau ${item.plateauTarget}`}`);
+        contentLines.push('');
+      });
+      
+      // Convert to text content
+      const content = contentLines.join('\n');
+      
+      // Create a blob with the content
+      const blob = new Blob([content], { type: 'text/plain' });
+      
+      // Create a download link and trigger it
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `actieplan_${new Date().toISOString().split('T')[0]}.md`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Confirm success
+      setTimeout(() => {
+        toast({
+          title: "PDF gedownload",
+          description: "Het actieplan is geëxporteerd als Markdown bestand.",
+        });
+      }, 1500);
+    } catch (error) {
+      toast({
+        title: "Fout bij exporteren",
+        description: "Er is een probleem opgetreden bij het genereren van de PDF.",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
