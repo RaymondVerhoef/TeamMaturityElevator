@@ -145,12 +145,13 @@ export default function Assessment() {
       window.scrollTo(0, 0);
     } else {
       // If we're on the last perspective, offer to finalize
-      if (getProgressPercentage(QUESTIONS, answers) >= 90) {
+      // With adaptive questions, we only check if we have a minimum number of answers
+      if (answers.length >= 10) {
         finalizeAssessment.mutate();
       } else {
         toast({
           title: "Assessment niet volledig",
-          description: "Beantwoord minimaal 90% van de vragen om het assessment af te ronden.",
+          description: "Beantwoord minimaal 10 vragen om het assessment af te ronden.",
           variant: "destructive",
         });
       }

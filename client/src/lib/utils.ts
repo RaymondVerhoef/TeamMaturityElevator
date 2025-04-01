@@ -9,8 +9,19 @@ export function cn(...inputs: ClassValue[]) {
 
 // Calculate the score for a single perspective
 export function calculatePerspectiveScore(questions: Question[], answers: Answer[]) {
-  const perspectiveQuestions = questions.filter(q => q.perspectiveId === questions[0].perspectiveId);
+  // If no questions, return minimum score (1.0)
+  if (!questions.length) return 1.0;
+  
+  // Filter to the appropriate perspective if questions array has items
+  const perspectiveQuestions = questions[0] ? 
+    questions.filter(q => q.perspectiveId === questions[0].perspectiveId) : 
+    [];
+    
   let totalPossibleScore = perspectiveQuestions.length;
+  
+  // If no questions in this perspective, return minimum score
+  if (totalPossibleScore === 0) return 1.0;
+  
   let actualScore = 0;
   
   for (const question of perspectiveQuestions) {
@@ -152,11 +163,29 @@ export function generateAssessmentResults(questions: Question[], answers: Answer
   const peopleQuestions = questions.filter(q => q.perspectiveId === "people");
   const processesQuestions = questions.filter(q => q.perspectiveId === "processes");
   
-  // Calculate scores for each perspective
-  const organizationScore = calculatePerspectiveScore(organizationQuestions, answers);
-  const systemsScore = calculatePerspectiveScore(systemsQuestions, answers);
-  const peopleScore = calculatePerspectiveScore(peopleQuestions, answers);
-  const processesScore = calculatePerspectiveScore(processesQuestions, answers);
+  // Determine appropriate plateau for each perspective
+  const orgPlateau = determineAppropriatePlateau("organization", questions, answers);
+  const sysPlateau = determineAppropriatePlateau("systems", questions, answers);
+  const peoplePlateau = determineAppropriatePlateau("people", questions, answers);
+  const processesPlateau = determineAppropriatePlateau("processes", questions, answers);
+  
+  // Calculate scores for each perspective - for better accuracy, calculate within their appropriate plateau
+  const organizationScore = calculatePerspectiveScore(
+    organizationQuestions.filter(q => q.plateauId === orgPlateau), 
+    answers.filter(a => a.perspectiveId === "organization")
+  );
+  const systemsScore = calculatePerspectiveScore(
+    systemsQuestions.filter(q => q.plateauId === sysPlateau), 
+    answers.filter(a => a.perspectiveId === "systems")
+  );
+  const peopleScore = calculatePerspectiveScore(
+    peopleQuestions.filter(q => q.plateauId === peoplePlateau), 
+    answers.filter(a => a.perspectiveId === "people")
+  );
+  const processesScore = calculatePerspectiveScore(
+    processesQuestions.filter(q => q.plateauId === processesPlateau), 
+    answers.filter(a => a.perspectiveId === "processes")
+  );
   
   // Calculate strengths and weaknesses
   const orgStrengthsWeaknesses = calculateStrengthsAndWeaknesses("organization", questions, answers);

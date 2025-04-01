@@ -77,6 +77,19 @@ export default function Sidebar({
             </div>
           </div>
         </div>
+        
+        <div className="mt-6">
+          <div className="mb-1 text-sm font-semibold text-muted-foreground">Info</div>
+          <div className="bg-muted rounded-md p-3 text-xs text-muted-foreground leading-relaxed">
+            <p className="mb-2">
+              <span className="font-medium">Adaptieve vragen:</span> Zet deze optie aan om automatisch 
+              de juiste plateau-vragen te selecteren op basis van eerdere antwoorden.
+            </p>
+            <p>
+              Beantwoord minimaal 10 vragen om het assessment af te ronden en de resultaten te bekijken.
+            </p>
+          </div>
+        </div>
       </div>
     </aside>
   );
