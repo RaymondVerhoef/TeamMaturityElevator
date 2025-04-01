@@ -1,8 +1,9 @@
-import { pgTable, text, serial, integer, json, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, json, timestamp, boolean, foreignKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { relations } from "drizzle-orm";
 import { z } from "zod";
 
-// User schema (keeping the existing one)
+// User schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -25,6 +26,10 @@ export const teams = pgTable("teams", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
+export const teamsRelations = relations(teams, ({ many }) => ({
+  assessments: many(assessments)
+}));
+
 export const insertTeamSchema = createInsertSchema(teams).pick({
   name: true,
   department: true
@@ -36,12 +41,20 @@ export type Team = typeof teams.$inferSelect;
 // Assessments schema
 export const assessments = pgTable("assessments", {
   id: serial("id").primaryKey(),
-  teamId: integer("team_id").notNull(),
+  teamId: integer("team_id").notNull().references(() => teams.id, { onDelete: 'cascade' }),
   coachName: text("coach_name").notNull(),
   date: timestamp("date").defaultNow(),
   status: text("status").notNull().default("in_progress"),
   results: json("results").$type<AssessmentResults>()
 });
+
+export const assessmentsRelations = relations(assessments, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [assessments.teamId],
+    references: [teams.id]
+  }),
+  answers: many(answers)
+}));
 
 export const insertAssessmentSchema = createInsertSchema(assessments).pick({
   teamId: true,
@@ -54,7 +67,7 @@ export type Assessment = typeof assessments.$inferSelect;
 // Assessment answers schema
 export const answers = pgTable("answers", {
   id: serial("id").primaryKey(),
-  assessmentId: integer("assessment_id").notNull(),
+  assessmentId: integer("assessment_id").notNull().references(() => assessments.id, { onDelete: 'cascade' }),
   perspectiveId: text("perspective_id").notNull(),
   plateauId: text("plateau_id").notNull(),
   levelId: text("level_id").notNull(),
@@ -63,6 +76,13 @@ export const answers = pgTable("answers", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow()
 });
+
+export const answersRelations = relations(answers, ({ one }) => ({
+  assessment: one(assessments, {
+    fields: [answers.assessmentId],
+    references: [assessments.id]
+  })
+}));
 
 export const insertAnswerSchema = createInsertSchema(answers).pick({
   assessmentId: true,

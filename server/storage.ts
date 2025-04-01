@@ -6,6 +6,8 @@ import {
   type Answer, type InsertAnswer,
   type AssessmentResults
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -31,142 +33,136 @@ export interface IStorage {
   updateAnswer(id: number, answer: Partial<InsertAnswer>): Promise<Answer>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private teams: Map<number, Team>;
-  private assessments: Map<number, Assessment>;
-  private answers: Map<number, Answer>;
-  
-  private userId: number;
-  private teamId: number;
-  private assessmentId: number;
-  private answerId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.teams = new Map();
-    this.assessments = new Map();
-    this.answers = new Map();
-    
-    this.userId = 1;
-    this.teamId = 1;
-    this.assessmentId = 1;
-    this.answerId = 1;
-    
-    // Seed with some initial teams
-    this.createTeam({ name: "Frontend DevOps", department: "IT" });
-    this.createTeam({ name: "Backend Development", department: "IT" });
-    this.createTeam({ name: "UX/UI Team", department: "Design" });
-  }
-
+export class DatabaseStorage implements IStorage {
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
   
   // Team methods
   async getTeam(id: number): Promise<Team | undefined> {
-    return this.teams.get(id);
+    const [team] = await db.select().from(teams).where(eq(teams.id, id));
+    return team;
   }
   
   async getTeams(): Promise<Team[]> {
-    return Array.from(this.teams.values());
+    return await db.select().from(teams);
   }
   
   async createTeam(insertTeam: InsertTeam): Promise<Team> {
-    const id = this.teamId++;
-    const team: Team = { ...insertTeam, id, createdAt: new Date() };
-    this.teams.set(id, team);
+    const [team] = await db.insert(teams).values(insertTeam).returning();
     return team;
   }
   
   // Assessment methods
   async getAssessment(id: number): Promise<Assessment | undefined> {
-    return this.assessments.get(id);
+    const [assessment] = await db.select().from(assessments).where(eq(assessments.id, id));
+    return assessment;
   }
   
   async getAssessmentsByTeam(teamId: number): Promise<Assessment[]> {
-    return Array.from(this.assessments.values()).filter(
-      (assessment) => assessment.teamId === teamId
-    );
+    return await db.select().from(assessments).where(eq(assessments.teamId, teamId));
   }
   
   async createAssessment(insertAssessment: InsertAssessment): Promise<Assessment> {
-    const id = this.assessmentId++;
-    const assessment: Assessment = { 
-      ...insertAssessment, 
-      id, 
-      date: new Date(), 
-      status: "in_progress",
-      results: undefined
-    };
-    this.assessments.set(id, assessment);
+    const [assessment] = await db.insert(assessments)
+      .values({
+        ...insertAssessment,
+        status: "in_progress",
+        results: null,  // Initialize with null to avoid TypeScript error
+      })
+      .returning();
     return assessment;
   }
   
   async updateAssessmentResults(id: number, results: AssessmentResults): Promise<Assessment> {
-    const assessment = await this.getAssessment(id);
-    if (!assessment) {
+    const [updatedAssessment] = await db.update(assessments)
+      .set({
+        results,
+        status: "completed"
+      })
+      .where(eq(assessments.id, id))
+      .returning();
+    
+    if (!updatedAssessment) {
       throw new Error(`Assessment with id ${id} not found`);
     }
     
-    const updatedAssessment: Assessment = {
-      ...assessment,
-      results,
-      status: "completed"
-    };
-    
-    this.assessments.set(id, updatedAssessment);
     return updatedAssessment;
   }
   
   // Answer methods
   async getAnswersByAssessment(assessmentId: number): Promise<Answer[]> {
-    return Array.from(this.answers.values()).filter(
-      (answer) => answer.assessmentId === assessmentId
-    );
+    return await db.select().from(answers).where(eq(answers.assessmentId, assessmentId));
   }
   
   async getAnswer(assessmentId: number, questionId: string): Promise<Answer | undefined> {
-    return Array.from(this.answers.values()).find(
-      (answer) => answer.assessmentId === assessmentId && answer.questionId === questionId
+    const [answer] = await db.select().from(answers).where(
+      and(
+        eq(answers.assessmentId, assessmentId),
+        eq(answers.questionId, questionId)
+      )
     );
+    return answer;
   }
   
   async createAnswer(insertAnswer: InsertAnswer): Promise<Answer> {
-    const id = this.answerId++;
-    const answer: Answer = { ...insertAnswer, id, createdAt: new Date() };
-    this.answers.set(id, answer);
+    // Check if this answer already exists
+    const existingAnswer = await this.getAnswer(
+      insertAnswer.assessmentId,
+      insertAnswer.questionId
+    );
+    
+    if (existingAnswer) {
+      // If it exists, update it
+      return this.updateAnswer(existingAnswer.id, insertAnswer);
+    }
+    
+    // Otherwise create a new answer
+    const [answer] = await db.insert(answers).values(insertAnswer).returning();
     return answer;
   }
   
   async updateAnswer(id: number, answerUpdate: Partial<InsertAnswer>): Promise<Answer> {
-    const existingAnswer = this.answers.get(id);
-    if (!existingAnswer) {
+    const [updatedAnswer] = await db.update(answers)
+      .set(answerUpdate)
+      .where(eq(answers.id, id))
+      .returning();
+    
+    if (!updatedAnswer) {
       throw new Error(`Answer with id ${id} not found`);
     }
     
-    const updatedAnswer: Answer = {
-      ...existingAnswer,
-      ...answerUpdate
-    };
-    
-    this.answers.set(id, updatedAnswer);
     return updatedAnswer;
   }
 }
 
-export const storage = new MemStorage();
+// Seed the database with initial data
+async function seedInitialData() {
+  const teamsCount = await db.select({ count: teams.id }).from(teams);
+  
+  if (teamsCount.length === 0 || teamsCount[0].count === 0) {
+    await db.insert(teams).values([
+      { name: "Frontend DevOps", department: "IT" },
+      { name: "Backend Development", department: "IT" },
+      { name: "UX/UI Team", department: "Design" }
+    ]);
+    console.log("Database seeded with initial teams");
+  }
+}
+
+// Initialize the database and seed it
+seedInitialData().catch(console.error);
+
+export const storage = new DatabaseStorage();
