@@ -227,15 +227,18 @@ export default function ActionPlan({ results, assessmentId }: ActionPlanProps) {
   
   // Fetch existing action plan
   const { 
-    data: existingActionPlan,
+    data: actionPlanResponse,
     isLoading,
     isError
   } = useQuery<{
-    id: number;
-    assessmentId: number;
-    items: ActionItem[];
-    createdAt?: Date;
-    updatedAt?: Date;
+    success: boolean;
+    actionPlan?: {
+      id: number;
+      assessmentId: number;
+      items: ActionItem[];
+      createdAt?: Date;
+      updatedAt?: Date;
+    }
   }>({
     queryKey: [`/api/assessments/${assessmentId}/action-plan`],
     retry: false,
@@ -246,12 +249,18 @@ export default function ActionPlan({ results, assessmentId }: ActionPlanProps) {
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   
   useEffect(() => {
-    if (existingActionPlan && existingActionPlan.items && existingActionPlan.items.length > 0) {
-      setActionItems(existingActionPlan.items);
+    // Check if we have a successful response with action plan data
+    if (actionPlanResponse?.success && 
+        actionPlanResponse.actionPlan && 
+        actionPlanResponse.actionPlan.items && 
+        actionPlanResponse.actionPlan.items.length > 0) {
+      console.log("Loading existing action plan items:", actionPlanResponse.actionPlan.items.length);
+      setActionItems(actionPlanResponse.actionPlan.items);
     } else {
+      console.log("Generating new action items");
       setActionItems(generateActionItems(results));
     }
-  }, [existingActionPlan, results]);
+  }, [actionPlanResponse, results]);
   
   // Mutation to save the action plan
   const saveActionPlanMutation = useMutation({
@@ -265,7 +274,7 @@ export default function ActionPlan({ results, assessmentId }: ActionPlanProps) {
         
         // Make the API request
         const result = await fetch(`/api/assessments/${assessmentId}/action-plan`, {
-          method: existingActionPlan ? 'PUT' : 'POST',
+          method: actionPlanResponse?.actionPlan ? 'PUT' : 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -274,13 +283,30 @@ export default function ActionPlan({ results, assessmentId }: ActionPlanProps) {
         
         // Check if the request was successful
         if (!result.ok) {
-          const errorData = await result.json();
-          console.error("Error saving action plan:", errorData);
-          throw new Error(errorData.message || 'Failed to save action plan');
+          try {
+            const errorData = await result.json();
+            console.error("Error saving action plan:", errorData);
+            throw new Error(errorData.message || 'Failed to save action plan');
+          } catch (parseError) {
+            console.error("Error parsing error response:", parseError);
+            throw new Error(`Failed to save action plan: ${result.statusText}`);
+          }
         }
         
-        // Parse and return the response
-        return await result.json();
+        // Handle potential 204 No Content response
+        if (result.status === 204) {
+          return { success: true };
+        }
+        
+        // Try to parse the JSON response, handle errors gracefully
+        try {
+          // Parse and return the response
+          return await result.json();
+        } catch (parseError) {
+          console.error("Error parsing success response:", parseError);
+          // Return a simple object to avoid breaking the chain
+          return { success: true };
+        }
       } catch (error) {
         console.error("Exception in save action plan:", error);
         throw error;

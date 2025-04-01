@@ -138,15 +138,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/assessments/:id/action-plan", async (req, res) => {
     try {
       const assessmentId = parseInt(req.params.id);
-      const actionPlan = await storage.getActionPlan(assessmentId);
+      console.log("Fetching action plan for assessment", assessmentId);
       
-      if (!actionPlan) {
-        return res.status(404).json({ message: "Action plan not found" });
+      try {
+        const actionPlan = await storage.getActionPlan(assessmentId);
+        
+        if (!actionPlan) {
+          return res.status(404).json({ 
+            success: false, 
+            message: "Action plan not found" 
+          });
+        }
+        
+        console.log("Action plan fetched:", JSON.stringify(actionPlan));
+        return res.status(200).json({ 
+          success: true, 
+          actionPlan: actionPlan 
+        });
+      } catch (storageError) {
+        console.error("Storage error fetching action plan:", storageError);
+        return res.status(500).json({ 
+          success: false,
+          message: "Failed to fetch action plan from database", 
+          error: String(storageError) 
+        });
       }
-      
-      res.json(actionPlan);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch action plan" });
+      console.error("Error fetching action plan:", error);
+      return res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch action plan", 
+        error: String(error) 
+      });
     }
   });
   
@@ -167,17 +190,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: req.body.items
       };
       
-      // Create action plan
-      const actionPlan = await storage.createActionPlan(actionPlanData);
-      console.log("Action plan created:", JSON.stringify(actionPlan));
-      
-      res.status(201).json(actionPlan);
+      try {
+        // Create action plan
+        const actionPlan = await storage.createActionPlan(actionPlanData);
+        console.log("Action plan created:", JSON.stringify(actionPlan));
+        
+        // Ensure we're sending valid JSON
+        return res.status(201).json({ 
+          success: true, 
+          actionPlan: actionPlan
+        });
+      } catch (storageError) {
+        console.error("Storage error creating action plan:", storageError);
+        return res.status(500).json({ 
+          message: "Failed to save action plan in database", 
+          error: String(storageError) 
+        });
+      }
     } catch (error) {
       console.error("Error creating action plan:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid action plan data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to save action plan", error: String(error) });
+      return res.status(500).json({ message: "Failed to save action plan", error: String(error) });
     }
   });
   
@@ -198,17 +233,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: req.body.items
       };
       
-      // Update action plan
-      const actionPlan = await storage.updateActionPlan(assessmentId, actionPlanData);
-      console.log("Action plan updated:", JSON.stringify(actionPlan));
-      
-      res.json(actionPlan);
+      try {
+        // Update action plan
+        const actionPlan = await storage.updateActionPlan(assessmentId, actionPlanData);
+        console.log("Action plan updated:", JSON.stringify(actionPlan));
+        
+        // Ensure we're sending valid JSON
+        return res.status(200).json({ 
+          success: true, 
+          actionPlan: actionPlan
+        });
+      } catch (storageError) {
+        console.error("Storage error updating action plan:", storageError);
+        return res.status(500).json({ 
+          message: "Failed to update action plan in database", 
+          error: String(storageError) 
+        });
+      }
     } catch (error) {
       console.error("Error updating action plan:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid action plan data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update action plan", error: String(error) });
+      return res.status(500).json({ message: "Failed to update action plan", error: String(error) });
     }
   });
 
