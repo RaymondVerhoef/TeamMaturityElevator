@@ -30,6 +30,76 @@ export function calculatePerspectiveScore(questions: Question[], answers: Answer
   return Math.round(scaledScore * 10) / 10; // Round to 1 decimal place
 }
 
+// Calculate the score for questions of a specific perspective and plateau
+export function calculatePlateauScore(perspectiveId: string, plateauId: string, questions: Question[], answers: Answer[]) {
+  const filteredQuestions = questions.filter(
+    q => q.perspectiveId === perspectiveId && q.plateauId === plateauId
+  );
+  
+  if (filteredQuestions.length === 0) return 0;
+  
+  let totalPossibleScore = filteredQuestions.length;
+  let actualScore = 0;
+  
+  for (const question of filteredQuestions) {
+    const answer = answers.find(a => a.questionId === question.id);
+    if (answer) {
+      const option = ANSWER_OPTIONS.find(o => o.value === answer.answer);
+      if (option) {
+        actualScore += option.score;
+      }
+    }
+  }
+  
+  return actualScore / totalPossibleScore; // Return as a percentage (0-1)
+}
+
+// Determine the appropriate plateau to show for a perspective based on answered questions
+export function determineAppropriatePlateau(perspectiveId: string, questions: Question[], answers: Answer[]): string {
+  // Calculate scores for each plateau
+  const reactiveScore = calculatePlateauScore(perspectiveId, "reactive", questions, answers);
+  
+  // Get reactive questions count to check if we've answered enough of them
+  const reactiveQuestions = questions.filter(
+    q => q.perspectiveId === perspectiveId && q.plateauId === "reactive"
+  );
+  
+  const reactiveAnswered = answers.filter(
+    a => a.perspectiveId === perspectiveId && a.plateauId === "reactive"
+  );
+  
+  // If not enough reactive questions have been answered, stick with reactive
+  if (reactiveAnswered.length < reactiveQuestions.length * 0.75) {
+    return "reactive";
+  }
+  
+  // If reactive score is high, move to proactive
+  if (reactiveScore >= 0.8) {
+    const proactiveScore = calculatePlateauScore(perspectiveId, "proactive", questions, answers);
+    const proactiveQuestions = questions.filter(
+      q => q.perspectiveId === perspectiveId && q.plateauId === "proactive"
+    );
+    
+    const proactiveAnswered = answers.filter(
+      a => a.perspectiveId === perspectiveId && a.plateauId === "proactive"
+    );
+    
+    // If not enough proactive questions have been answered, move to proactive
+    if (proactiveAnswered.length < proactiveQuestions.length * 0.75) {
+      return "proactive";
+    }
+    
+    // If proactive score is high, move to innovative
+    if (proactiveScore >= 0.8) {
+      return "innovative";
+    }
+    
+    return "proactive";
+  }
+  
+  return "reactive";
+}
+
 // Determine the plateau level based on perspective scores
 export function determinePlateau(scores: {
   organizationManagement: number;

@@ -3,10 +3,11 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { PERSPECTIVES, LEVELS, PLATEAUS, QUESTIONS } from "@/lib/constants";
-import { getProgressPercentage, generateAssessmentResults } from "@/lib/utils";
+import { getProgressPercentage, generateAssessmentResults, determineAppropriatePlateau } from "@/lib/utils";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import QuestionCard from "@/components/questions/QuestionCard";
@@ -21,6 +22,7 @@ export default function Assessment() {
   
   const [currentPerspective, setCurrentPerspective] = useState(PERSPECTIVES.organization.id);
   const [currentPlateau, setCurrentPlateau] = useState(PLATEAUS.reactive.id);
+  const [autoAdaptPlateau, setAutoAdaptPlateau] = useState(true);
   
   // Fetch assessment data
   const { data: assessment, isLoading: isLoadingAssessment } = useQuery<AssessmentType>({
@@ -35,8 +37,16 @@ export default function Assessment() {
   
   // Fetch answers for this assessment
   const { data: answers = [], isLoading: isLoadingAnswers } = useQuery<Answer[]>({
-    queryKey: [`/api/assessments/${assessmentId}/answers`],
+    queryKey: [`/api/assessments/${assessmentId}/answers`]
   });
+  
+  // Update plateau when answers change
+  useEffect(() => {
+    if (autoAdaptPlateau && answers.length > 0) {
+      const appropriatePlateau = determineAppropriatePlateau(currentPerspective, QUESTIONS, answers);
+      setCurrentPlateau(appropriatePlateau);
+    }
+  }, [answers, autoAdaptPlateau, currentPerspective]);
   
   // Save answer mutation
   const saveAnswer = useMutation({
@@ -90,6 +100,8 @@ export default function Assessment() {
   // Handle perspective change
   const handlePerspectiveChange = (perspectiveId: string) => {
     setCurrentPerspective(perspectiveId);
+    
+    // Auto-adapt is handled in the useEffect
   };
   
   // Handle question answer
@@ -227,19 +239,36 @@ export default function Assessment() {
                     <h2 className="font-inter font-semibold text-xl">
                       <span className="text-primary">{PERSPECTIVES[currentPerspective].name}</span>
                     </h2>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-muted-foreground">Plateau:</span>
-                      <select 
-                        className="border border-input rounded-md py-1 px-2 text-sm font-medium"
-                        value={currentPlateau}
-                        onChange={(e) => setCurrentPlateau(e.target.value)}
-                      >
-                        {Object.values(PLATEAUS).map((plateau) => (
-                          <option key={plateau.id} value={plateau.id}>
-                            {plateau.name}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <Switch 
+                          id="auto-adapt"
+                          checked={autoAdaptPlateau}
+                          onCheckedChange={setAutoAdaptPlateau}
+                        />
+                        <label 
+                          htmlFor="auto-adapt" 
+                          className="text-sm text-muted-foreground cursor-pointer"
+                        >
+                          Adaptieve vragen
+                        </label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-muted-foreground">Plateau:</span>
+                        <select 
+                          className="border border-input rounded-md py-1 px-2 text-sm font-medium"
+                          value={currentPlateau}
+                          onChange={(e) => setCurrentPlateau(e.target.value)}
+                          disabled={autoAdaptPlateau}
+                        >
+                          {Object.values(PLATEAUS).map((plateau) => (
+                            <option key={plateau.id} value={plateau.id}>
+                              {plateau.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                   

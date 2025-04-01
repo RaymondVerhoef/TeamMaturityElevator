@@ -152,6 +152,44 @@ export const QUESTIONS: Question[] = [
     levelId: "individual"
   },
   
+  // Organizational Management - Proactive - Organization Level
+  {
+    id: "org_mgmt_2_org_1",
+    text: "Heeft de Product Owner mandaat en is hij/zij in staat om prioriteiten te stellen?",
+    description: "De PO kan volledig prioriteiten stellen en heeft mandaat om beslissingen te nemen over requirements en prioriteiten.",
+    perspectiveId: "organization",
+    plateauId: "proactive",
+    levelId: "organization"
+  },
+  {
+    id: "org_mgmt_2_org_2",
+    text: "Heeft het team een duidelijke strategie die is afgestemd op de organisatiedoelen?",
+    description: "Het team heeft een duidelijke strategie vastgesteld die is afgestemd op organisatiedoelen, missie, en waarden.",
+    perspectiveId: "organization",
+    plateauId: "proactive",
+    levelId: "organization"
+  },
+  
+  // Organizational Management - Proactive - Team Level
+  {
+    id: "org_mgmt_2_team_1",
+    text: "Is het team zelforganiserend en in staat beslissingen te nemen?",
+    description: "Het team is zelforganiserend, in staat om eigen beslissingen te nemen, en verantwoordelijk voor het resultaat.",
+    perspectiveId: "organization",
+    plateauId: "proactive",
+    levelId: "team"
+  },
+  
+  // Organizational Management - Innovative - Organization Level
+  {
+    id: "org_mgmt_3_org_1",
+    text: "Is er een cultuur van experimenteren en innoveren binnen de organisatie?",
+    description: "De organisatie stimuleert actief experimenteren en innoveren, en biedt ruimte voor het testen van nieuwe ideeën.",
+    perspectiveId: "organization",
+    plateauId: "innovative",
+    levelId: "organization"
+  },
+  
   // Systems & Facilities - Reactive - Organization Level
   {
     id: "sys_fac_1_org_1",
@@ -188,6 +226,36 @@ export const QUESTIONS: Question[] = [
     levelId: "team"
   },
   
+  // Systems & Facilities - Proactive - Organization Level
+  {
+    id: "sys_fac_2_org_1",
+    text: "Wordt CI/CD actief gebruikt voor softwareontwikkeling?",
+    description: "CI/CD pipelines zijn ingericht en worden actief gebruikt voor softwareontwikkeling en deployment.",
+    perspectiveId: "systems",
+    plateauId: "proactive",
+    levelId: "organization"
+  },
+  
+  // Systems & Facilities - Proactive - Team Level
+  {
+    id: "sys_fac_2_team_1",
+    text: "Maakt het team gebruik van geautomatiseerde tests en kwaliteitscontroles?",
+    description: "Het team maakt gebruik van geautomatiseerde tests en kwaliteitscontroles om de kwaliteit van de software te waarborgen.",
+    perspectiveId: "systems",
+    plateauId: "proactive",
+    levelId: "team"
+  },
+  
+  // Systems & Facilities - Innovative - Team Level
+  {
+    id: "sys_fac_3_team_1",
+    text: "Experimenteert het team met nieuwe technologieën en methodieken?",
+    description: "Het team experimenteert actief met nieuwe technologieën en methodieken om de productiviteit en kwaliteit te verbeteren.",
+    perspectiveId: "systems",
+    plateauId: "innovative",
+    levelId: "team"
+  },
+  
   // People & Culture - Reactive - Organization Level
   {
     id: "ppl_cul_1_org_1",
@@ -216,6 +284,26 @@ export const QUESTIONS: Question[] = [
     levelId: "team"
   },
   
+  // People & Culture - Proactive - Team Level
+  {
+    id: "ppl_cul_2_team_1",
+    text: "Is er een cultuur van continu leren en kennisdeling binnen het team?",
+    description: "Het team heeft een cultuur van continu leren en actieve kennisdeling, zowel intern als met andere teams.",
+    perspectiveId: "people",
+    plateauId: "proactive",
+    levelId: "team"
+  },
+  
+  // People & Culture - Innovative - Team Level
+  {
+    id: "ppl_cul_3_team_1",
+    text: "Is het team in staat om zichzelf aan te passen en te innoveren?",
+    description: "Het team kan zichzelf aanpassen aan veranderende omstandigheden en zoekt actief naar innovatieve oplossingen.",
+    perspectiveId: "people",
+    plateauId: "innovative",
+    levelId: "team"
+  },
+  
   // Process & Information - Reactive - Organization Level
   {
     id: "proc_inf_1_org_1",
@@ -241,6 +329,26 @@ export const QUESTIONS: Question[] = [
     description: "Er is een eenvoudige Definition of Done en Definition of Ready vastgesteld voor alle backlogitems.",
     perspectiveId: "processes",
     plateauId: "reactive",
+    levelId: "team"
+  },
+  
+  // Process & Information - Proactive - Team Level
+  {
+    id: "proc_inf_2_team_1",
+    text: "Werkt het team met gestructureerde backlogs en prioritering?",
+    description: "Het team werkt met gestructureerde backlogs, prioritering, en regelmatige refinement sessies.",
+    perspectiveId: "processes",
+    plateauId: "proactive",
+    levelId: "team"
+  },
+  
+  // Process & Information - Innovative - Team Level
+  {
+    id: "proc_inf_3_team_1",
+    text: "Gebruikt het team geavanceerde metrics en data-analyse?",
+    description: "Het team gebruikt geavanceerde metrics en data-analyse om de prestaties te meten en te verbeteren.",
+    perspectiveId: "processes",
+    plateauId: "innovative",
     levelId: "team"
   }
 ];
