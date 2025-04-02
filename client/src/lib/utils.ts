@@ -79,13 +79,14 @@ export function determineAppropriatePlateau(perspectiveId: string, questions: Qu
     a => a.perspectiveId === perspectiveId && a.plateauId === "reactive"
   );
   
-  // If not enough reactive questions have been answered, stick with reactive
-  if (reactiveAnswered.length < reactiveQuestions.length * 0.75) {
+  // If we have no answers yet for this perspective, stay at reactive
+  if (reactiveAnswered.length === 0) {
     return "reactive";
   }
   
-  // If reactive score is high, move to proactive
-  if (reactiveScore >= 0.8) {
+  // If reactive score is decent and we've answered at least 2 questions or 30% of questions, move to proactive
+  const minAnswered = Math.max(2, Math.floor(reactiveQuestions.length * 0.3));
+  if (reactiveScore >= 0.5 && reactiveAnswered.length >= minAnswered) {
     const proactiveScore = calculatePlateauScore(perspectiveId, "proactive", questions, answers);
     const proactiveQuestions = questions.filter(
       q => q.perspectiveId === perspectiveId && q.plateauId === "proactive"
@@ -95,13 +96,8 @@ export function determineAppropriatePlateau(perspectiveId: string, questions: Qu
       a => a.perspectiveId === perspectiveId && a.plateauId === "proactive"
     );
     
-    // If not enough proactive questions have been answered, move to proactive
-    if (proactiveAnswered.length < proactiveQuestions.length * 0.75) {
-      return "proactive";
-    }
-    
-    // If proactive score is high, move to innovative
-    if (proactiveScore >= 0.8) {
+    // If proactive score is decent and we've answered a few questions, move to innovative
+    if (proactiveScore >= 0.5 && proactiveAnswered.length >= minAnswered) {
       return "innovative";
     }
     
