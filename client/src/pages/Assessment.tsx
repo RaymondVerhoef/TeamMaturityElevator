@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { PERSPECTIVES, LEVELS, PLATEAUS, QUESTIONS, ANSWER_OPTIONS } from "@/lib/constants";
+import { EXPANDED_QUESTIONS } from "@/lib/expanded-questions";
 import { getProgressPercentage, generateAssessmentResults, determineAppropriatePlateau } from "@/lib/utils";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
@@ -50,7 +51,7 @@ export default function Assessment() {
   // Update plateau when answers change
   useEffect(() => {
     if (autoAdaptPlateau && answers.length > 0) {
-      const appropriatePlateau = determineAppropriatePlateau(currentPerspective, QUESTIONS, answers);
+      const appropriatePlateau = determineAppropriatePlateau(currentPerspective, EXPANDED_QUESTIONS, answers);
       setCurrentPlateau(appropriatePlateau);
     }
   }, [answers, autoAdaptPlateau, currentPerspective]);
@@ -84,7 +85,7 @@ export default function Assessment() {
   // Finalize assessment mutation
   const finalizeAssessment = useMutation({
     mutationFn: async () => {
-      const results = generateAssessmentResults(QUESTIONS, answers);
+      const results = generateAssessmentResults(EXPANDED_QUESTIONS, answers);
       const res = await apiRequest("PUT", `/api/assessments/${assessmentId}/results`, results);
       return res.json();
     },
@@ -132,7 +133,8 @@ export default function Assessment() {
   };
   
   // Get questions for current perspective and plateau
-  const perspectiveQuestions = QUESTIONS.filter(
+  // Use the expanded questions instead of the basic ones
+  const perspectiveQuestions = EXPANDED_QUESTIONS.filter(
     q => q.perspectiveId === currentPerspective && q.plateauId === currentPlateau
   );
   
@@ -206,7 +208,7 @@ export default function Assessment() {
           currentPerspective={currentPerspective}
           perspectives={Object.values(PERSPECTIVES)}
           onPerspectiveChange={handlePerspectiveChange}
-          progress={getProgressPercentage(QUESTIONS, answers)}
+          progress={getProgressPercentage(EXPANDED_QUESTIONS, answers)}
         />
         
         <div className="flex-1 overflow-auto">
@@ -234,10 +236,10 @@ export default function Assessment() {
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-secondary transition-all duration-300 ease-in-out" 
-                    style={{ width: `${getProgressPercentage(QUESTIONS, answers)}%` }}
+                    style={{ width: `${getProgressPercentage(EXPANDED_QUESTIONS, answers)}%` }}
                   ></div>
                 </div>
-                <div className="text-xs mt-1 text-muted-foreground">{getProgressPercentage(QUESTIONS, answers)}% complete</div>
+                <div className="text-xs mt-1 text-muted-foreground">{getProgressPercentage(EXPANDED_QUESTIONS, answers)}% complete</div>
               </div>
               
               <Tabs defaultValue="list" value={activeTab} onValueChange={setActiveTab}>
@@ -400,7 +402,7 @@ export default function Assessment() {
                       team={team}
                       onSubmitAnswer={handleQuestionAnswer}
                       decisionTree={decisionTree}
-                      questions={QUESTIONS}
+                      questions={EXPANDED_QUESTIONS}
                       answerOptions={ANSWER_OPTIONS}
                     />
                   </div>
