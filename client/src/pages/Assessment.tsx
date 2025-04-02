@@ -4,13 +4,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { PERSPECTIVES, LEVELS, PLATEAUS, QUESTIONS } from "@/lib/constants";
+import { PERSPECTIVES, LEVELS, PLATEAUS, QUESTIONS, ANSWER_OPTIONS } from "@/lib/constants";
 import { getProgressPercentage, generateAssessmentResults, determineAppropriatePlateau } from "@/lib/utils";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import QuestionCard from "@/components/questions/QuestionCard";
+import ConversationGuide, { importDecisionTree } from "@/components/conversation/ConversationGuide";
+import conversationTree from "@/lib/conversationTree";
 import type { Assessment as AssessmentType, Team, Answer } from "@shared/schema";
 
 export default function Assessment() {
@@ -23,6 +26,8 @@ export default function Assessment() {
   const [currentPerspective, setCurrentPerspective] = useState(PERSPECTIVES.organization.id);
   const [currentPlateau, setCurrentPlateau] = useState(PLATEAUS.reactive.id);
   const [autoAdaptPlateau, setAutoAdaptPlateau] = useState(true);
+  const [activeTab, setActiveTab] = useState("list");
+  const decisionTree = importDecisionTree(conversationTree);
   
   // Fetch assessment data
   const { data: assessment, isLoading: isLoadingAssessment } = useQuery<AssessmentType>({
@@ -233,150 +238,191 @@ export default function Assessment() {
                 <div className="text-xs mt-1 text-muted-foreground">{getProgressPercentage(QUESTIONS, answers)}% complete</div>
               </div>
               
-              <Card className="bg-white shadow-sm rounded-md">
-                <CardContent className="p-4 md:p-6">
-                  {/* Current perspective overview */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-inter font-semibold text-xl">
-                      <span className="text-primary">{PERSPECTIVES[currentPerspective].name}</span>
-                    </h2>
-                    <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
-                      <div className="flex items-center space-x-2">
-                        <Switch 
-                          id="auto-adapt"
-                          checked={autoAdaptPlateau}
-                          onCheckedChange={setAutoAdaptPlateau}
-                        />
-                        <label 
-                          htmlFor="auto-adapt" 
-                          className="text-sm text-muted-foreground cursor-pointer"
-                        >
-                          Adaptieve vragen
-                        </label>
+              <Tabs defaultValue="list" value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="list">Vragenlijst</TabsTrigger>
+                  <TabsTrigger value="conversation">Gespreksgeleider</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="list">
+                  <Card className="bg-white shadow-sm rounded-md">
+                    <CardContent className="p-4 md:p-6">
+                      {/* Current perspective overview */}
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="font-inter font-semibold text-xl">
+                          <span className="text-primary">{PERSPECTIVES[currentPerspective].name}</span>
+                        </h2>
+                        <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
+                          <div className="flex items-center space-x-2">
+                            <Switch 
+                              id="auto-adapt"
+                              checked={autoAdaptPlateau}
+                              onCheckedChange={setAutoAdaptPlateau}
+                            />
+                            <label 
+                              htmlFor="auto-adapt" 
+                              className="text-sm text-muted-foreground cursor-pointer"
+                            >
+                              Adaptieve vragen
+                            </label>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-muted-foreground">Plateau:</span>
+                            <select 
+                              className="border border-input rounded-md py-1 px-2 text-sm font-medium"
+                              value={currentPlateau}
+                              onChange={(e) => setCurrentPlateau(e.target.value)}
+                              disabled={autoAdaptPlateau}
+                            >
+                              {Object.values(PLATEAUS).map((plateau) => (
+                                <option key={plateau.id} value={plateau.id}>
+                                  {plateau.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-muted-foreground">Plateau:</span>
-                        <select 
-                          className="border border-input rounded-md py-1 px-2 text-sm font-medium"
-                          value={currentPlateau}
-                          onChange={(e) => setCurrentPlateau(e.target.value)}
-                          disabled={autoAdaptPlateau}
-                        >
-                          {Object.values(PLATEAUS).map((plateau) => (
-                            <option key={plateau.id} value={plateau.id}>
-                              {plateau.name}
-                            </option>
-                          ))}
-                        </select>
+                      <p className="text-muted-foreground mb-6 text-base">
+                        {PERSPECTIVES[currentPerspective].description}
+                      </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {Object.values(LEVELS).map((level) => (
+                          <div key={level.id} className="bg-muted rounded-md p-3">
+                            <div className="text-sm font-semibold text-primary mb-1">{level.name}</div>
+                            <p className="text-sm text-muted-foreground">{level.description}</p>
+                          </div>
+                        ))}
                       </div>
+                    </CardContent>
+                  </Card>
+                
+                  {/* Assessment Questions */}
+                  <div className="space-y-6 mt-6">
+                    {/* Organization Level Questions */}
+                    {questionsByLevel.organization.length > 0 && (
+                      <Card className="bg-white shadow-sm rounded-md overflow-hidden">
+                        <div className="border-b border-border p-4 md:p-6">
+                          <h3 className="font-inter font-semibold text-lg text-primary">{LEVELS.organization.name}</h3>
+                        </div>
+                        
+                        {questionsByLevel.organization.map((question, index) => (
+                          <QuestionCard
+                            key={question.id}
+                            question={question}
+                            answers={answers}
+                            onAnswer={handleQuestionAnswer}
+                            isLast={index === questionsByLevel.organization.length - 1}
+                          />
+                        ))}
+                      </Card>
+                    )}
+                    
+                    {/* Team Level Questions */}
+                    {questionsByLevel.team.length > 0 && (
+                      <Card className="bg-white shadow-sm rounded-md overflow-hidden">
+                        <div className="border-b border-border p-4 md:p-6">
+                          <h3 className="font-inter font-semibold text-lg text-primary">{LEVELS.team.name}</h3>
+                        </div>
+                        
+                        {questionsByLevel.team.map((question, index) => (
+                          <QuestionCard
+                            key={question.id}
+                            question={question}
+                            answers={answers}
+                            onAnswer={handleQuestionAnswer}
+                            isLast={index === questionsByLevel.team.length - 1}
+                          />
+                        ))}
+                      </Card>
+                    )}
+                    
+                    {/* Individual Level Questions */}
+                    {questionsByLevel.individual.length > 0 && (
+                      <Card className="bg-white shadow-sm rounded-md overflow-hidden">
+                        <div className="border-b border-border p-4 md:p-6">
+                          <h3 className="font-inter font-semibold text-lg text-primary">{LEVELS.individual.name}</h3>
+                        </div>
+                        
+                        {questionsByLevel.individual.map((question, index) => (
+                          <QuestionCard
+                            key={question.id}
+                            question={question}
+                            answers={answers}
+                            onAnswer={handleQuestionAnswer}
+                            isLast={index === questionsByLevel.individual.length - 1}
+                          />
+                        ))}
+                      </Card>
+                    )}
+                    
+                    {/* Navigation buttons */}
+                    <div className="flex justify-between pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={handlePreviousPerspective}
+                        disabled={currentPerspective === PERSPECTIVES.organization.id}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Vorige
+                      </Button>
+                      
+                      <Button
+                        onClick={handleNextPerspective}
+                        disabled={finalizeAssessment.isPending}
+                      >
+                        {currentPerspective === PERSPECTIVES.processes.id ? (
+                          finalizeAssessment.isPending ? "Afronden..." : "Rond assessment af"
+                        ) : (
+                          <>
+                            Volgende
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
-                  
-                  <p className="text-muted-foreground mb-6 text-base">
-                    {PERSPECTIVES[currentPerspective].description}
-                  </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {Object.values(LEVELS).map((level) => (
-                      <div key={level.id} className="bg-muted rounded-md p-3">
-                        <div className="text-sm font-semibold text-primary mb-1">{level.name}</div>
-                        <p className="text-sm text-muted-foreground">{level.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* Assessment Questions */}
-            <div className="space-y-6">
-              {/* Organization Level Questions */}
-              {questionsByLevel.organization.length > 0 && (
-                <Card className="bg-white shadow-sm rounded-md overflow-hidden">
-                  <div className="border-b border-border p-4 md:p-6">
-                    <h3 className="font-inter font-semibold text-lg text-primary">{LEVELS.organization.name}</h3>
-                  </div>
-                  
-                  {questionsByLevel.organization.map((question, index) => (
-                    <QuestionCard
-                      key={question.id}
-                      question={question}
-                      answers={answers}
-                      onAnswer={handleQuestionAnswer}
-                      isLast={index === questionsByLevel.organization.length - 1}
-                    />
-                  ))}
-                </Card>
-              )}
-              
-              {/* Team Level Questions */}
-              {questionsByLevel.team.length > 0 && (
-                <Card className="bg-white shadow-sm rounded-md overflow-hidden">
-                  <div className="border-b border-border p-4 md:p-6">
-                    <h3 className="font-inter font-semibold text-lg text-primary">{LEVELS.team.name}</h3>
-                  </div>
-                  
-                  {questionsByLevel.team.map((question, index) => (
-                    <QuestionCard
-                      key={question.id}
-                      question={question}
-                      answers={answers}
-                      onAnswer={handleQuestionAnswer}
-                      isLast={index === questionsByLevel.team.length - 1}
-                    />
-                  ))}
-                </Card>
-              )}
-              
-              {/* Individual Level Questions */}
-              {questionsByLevel.individual.length > 0 && (
-                <Card className="bg-white shadow-sm rounded-md overflow-hidden">
-                  <div className="border-b border-border p-4 md:p-6">
-                    <h3 className="font-inter font-semibold text-lg text-primary">{LEVELS.individual.name}</h3>
-                  </div>
-                  
-                  {questionsByLevel.individual.map((question, index) => (
-                    <QuestionCard
-                      key={question.id}
-                      question={question}
-                      answers={answers}
-                      onAnswer={handleQuestionAnswer}
-                      isLast={index === questionsByLevel.individual.length - 1}
-                    />
-                  ))}
-                </Card>
-              )}
-              
-              {/* Navigation buttons */}
-              <div className="flex justify-between pt-4">
-                <Button
-                  variant="outline"
-                  onClick={handlePreviousPerspective}
-                  disabled={currentPerspective === PERSPECTIVES.organization.id}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Vorige
-                </Button>
+                </TabsContent>
                 
-                <Button
-                  onClick={handleNextPerspective}
-                  disabled={finalizeAssessment.isPending}
-                >
-                  {currentPerspective === PERSPECTIVES.processes.id ? (
-                    finalizeAssessment.isPending ? "Afronden..." : "Rond assessment af"
-                  ) : (
-                    <>
-                      Volgende
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </>
-                  )}
-                </Button>
-              </div>
+                <TabsContent value="conversation">
+                  <div className="mb-6">
+                    <ConversationGuide 
+                      assessment={assessment}
+                      team={team}
+                      onSubmitAnswer={handleQuestionAnswer}
+                      decisionTree={decisionTree}
+                      questions={QUESTIONS}
+                      answerOptions={ANSWER_OPTIONS}
+                    />
+                  </div>
+                  
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      onClick={() => setActiveTab("list")}
+                      variant="outline"
+                      className="mr-2"
+                    >
+                      Terug naar vragenlijst
+                    </Button>
+                    
+                    {answers.length >= 10 && (
+                      <Button
+                        onClick={() => finalizeAssessment.mutate()}
+                        disabled={finalizeAssessment.isPending}
+                      >
+                        {finalizeAssessment.isPending ? "Afronden..." : "Rond assessment af"}
+                      </Button>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
