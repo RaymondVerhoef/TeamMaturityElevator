@@ -1,4 +1,7 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
+import { Home, Users } from "lucide-react";
 
 interface HeaderProps {
   userName?: string;
@@ -12,7 +15,26 @@ export default function Header({ userName, showUser = false }: HeaderProps) {
     <header className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
         <div className="flex items-center">
-          <div className="text-primary font-inter font-bold text-xl">Haags Werken Elevator</div>
+          <Link href="/">
+            <div className="text-primary font-inter font-bold text-xl flex items-center cursor-pointer">
+              Haags Werken Elevator
+            </div>
+          </Link>
+          
+          <nav className="ml-8 hidden md:flex space-x-4">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                <Home className="h-4 w-4" />
+                <span>Home</span>
+              </Button>
+            </Link>
+            <Link href="/teams">
+              <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>Teams</span>
+              </Button>
+            </Link>
+          </nav>
         </div>
         
         {showUser && (

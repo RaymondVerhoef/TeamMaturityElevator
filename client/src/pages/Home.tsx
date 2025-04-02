@@ -180,6 +180,14 @@ export default function Home() {
                     </SelectContent>
                   </Select>
                 </div>
+                
+                <div className="text-center pt-2">
+                  <Link href="/teams">
+                    <Button variant="link" size="sm">
+                      Teams beheren
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
               <CardFooter>
                 <Button 
