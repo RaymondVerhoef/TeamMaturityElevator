@@ -498,4 +498,6 @@ function determineNextQuestion(currentNodeId, answers) {
   return currentNode.decisionLogic(answers);
 }
 
-export default decisionTree;
+// To ensure TypeScript compatibility
+const typedDecisionTree = decisionTree;
+export default typedDecisionTree;

@@ -12,7 +12,8 @@ import { getProgressPercentage, generateAssessmentResults, determineAppropriateP
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import QuestionCard from "@/components/questions/QuestionCard";
-import ConversationGuide, { importDecisionTree } from "@/components/conversation/ConversationGuide";
+import ConversationGuide from "@/components/conversation/ConversationGuide";
+import type { DecisionTree } from "@/components/conversation/ConversationGuide";
 import conversationTree from "@/lib/conversationTree";
 import type { Assessment as AssessmentType, Team, Answer } from "@shared/schema";
 
@@ -27,7 +28,8 @@ export default function Assessment() {
   const [currentPlateau, setCurrentPlateau] = useState(PLATEAUS.reactive.id);
   const [autoAdaptPlateau, setAutoAdaptPlateau] = useState(true);
   const [activeTab, setActiveTab] = useState("list");
-  const decisionTree = importDecisionTree(conversationTree);
+  // Use the conversationTree directly
+  const decisionTree = conversationTree as DecisionTree;
   
   // Fetch assessment data
   const { data: assessment, isLoading: isLoadingAssessment } = useQuery<AssessmentType>({

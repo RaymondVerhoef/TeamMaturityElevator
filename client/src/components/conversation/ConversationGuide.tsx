@@ -3,16 +3,50 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Assessment, Team, Answer } from "@shared/schema";
+import type { Question } from "@/lib/constants";
 
-// Mock de standaard ANSWER_OPTIONS die normaal uit de constants komen
-const DEFAULT_ANSWER_OPTIONS = [
+// Define types for the decision tree
+export type TreeNodeOption = {
+  value: string;
+  label: string;
+  nextNode: string;
+};
+
+export type TreeNode = {
+  id: string;
+  question: string;
+  type: string;
+  nextNode?: string;
+  options?: TreeNodeOption[];
+  perspectiveId?: string;
+  plateauId?: string;
+  levelId?: string;
+  questionIds?: string[];
+  decisionLogic?: (answers: string[]) => string;
+};
+
+export type DecisionTree = {
+  startNode: TreeNode;
+  nodes: Record<string, TreeNode>;
+};
+
+// Answer option type
+export type AnswerOption = {
+  value: string;
+  label: string;
+  score: number;
+};
+
+// Default answer options
+const DEFAULT_ANSWER_OPTIONS: AnswerOption[] = [
   { value: "yes", label: "Ja, volledig", score: 1.0 },
   { value: "partly", label: "Gedeeltelijk", score: 0.5 },
   { value: "no", label: "Nee", score: 0.0 }
 ];
 
-// Definieer de basis structuur van de beslisboom
-const defaultDecisionTree = {
+// Basic decision tree structure
+const defaultDecisionTree: DecisionTree = {
   startNode: {
     id: "start",
     question: "Welkom bij het assessment gesprek. Laten we eerst even kennismaken en het doel van dit gesprek bespreken. Kun je kort vertellen hoe jullie team is samengesteld en wat jullie voornaamste werkzaamheden zijn?",
@@ -34,7 +68,23 @@ const defaultDecisionTree = {
   }
 };
 
-const ConversationGuide = ({ 
+interface ConversationGuideProps {
+  assessment?: Assessment;
+  team?: Team;
+  onSubmitAnswer: (
+    questionId: string, 
+    answer: string, 
+    notes: string, 
+    perspectiveId: string, 
+    plateauId: string, 
+    levelId: string
+  ) => void;
+  decisionTree?: DecisionTree;
+  questions?: Question[];
+  answerOptions?: AnswerOption[];
+}
+
+const ConversationGuide: React.FC<ConversationGuideProps> = ({ 
   assessment, 
   team, 
   onSubmitAnswer, 
@@ -42,18 +92,18 @@ const ConversationGuide = ({
   questions = [],
   answerOptions = DEFAULT_ANSWER_OPTIONS 
 }) => {
-  const [currentNode, setCurrentNode] = useState(decisionTree.startNode);
-  const [notes, setNotes] = useState('');
-  const [history, setHistory] = useState([]);
-  const [selectedAnswer, setSelectedAnswer] = useState('');
-  const [assessmentQuestions, setAssessmentQuestions] = useState([]);
+  const [currentNode, setCurrentNode] = useState<TreeNode>(decisionTree.startNode);
+  const [notes, setNotes] = useState<string>('');
+  const [history, setHistory] = useState<TreeNode[]>([]);
+  const [selectedAnswer, setSelectedAnswer] = useState<string>('');
+  const [assessmentQuestions, setAssessmentQuestions] = useState<Question[]>([]);
   
   // Effect om assessmentvragen in te stellen wanneer beschikbaar
   useEffect(() => {
     if (currentNode.questionIds && currentNode.questionIds.length > 0 && questions.length > 0) {
       const foundQuestions = currentNode.questionIds.map(id => 
         questions.find(q => q.id === id)
-      ).filter(Boolean);
+      ).filter(Boolean) as Question[];
       setAssessmentQuestions(foundQuestions);
     } else {
       setAssessmentQuestions([]);
@@ -61,17 +111,19 @@ const ConversationGuide = ({
   }, [currentNode, questions]);
   
   // Navigeer naar een nieuwe node
-  const navigateTo = (nodeId) => {
+  const navigateTo = (nodeId: string) => {
     // Voeg huidige node toe aan geschiedenis
     setHistory(prev => [...prev, currentNode]);
     
     // Stel nieuwe node in
     const nextNode = decisionTree.nodes[nodeId];
-    setCurrentNode(nextNode);
-    
-    // Reset de geselecteerde antwoorden en notities
-    setSelectedAnswer('');
-    setNotes('');
+    if (nextNode) {
+      setCurrentNode(nextNode);
+      
+      // Reset de geselecteerde antwoorden en notities
+      setSelectedAnswer('');
+      setNotes('');
+    }
   };
   
   // Ga terug naar de vorige node
@@ -86,7 +138,7 @@ const ConversationGuide = ({
   };
   
   // Verwerk antwoord en bepaal volgende node
-  const handleAnswer = (answer) => {
+  const handleAnswer = (answer: string) => {
     setSelectedAnswer(answer);
     
     // Als er assessmentvragen zijn, stuur de antwoorden naar de parent component
@@ -182,7 +234,7 @@ const ConversationGuide = ({
                   <SelectValue placeholder="Selecteer een optie" />
                 </SelectTrigger>
                 <SelectContent>
-                  {currentNode.options.map(option => (
+                  {currentNode.options?.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -306,12 +358,11 @@ const ConversationGuide = ({
 };
 
 // Hulpfunctie voor het importeren van een volledige beslisboomstructuur
-const importDecisionTree = (decisionTreeData) => {
+export function importDecisionTree(decisionTreeData: any): DecisionTree {
   if (decisionTreeData && decisionTreeData.startNode && decisionTreeData.nodes) {
-    return decisionTreeData;
+    return decisionTreeData as DecisionTree;
   }
   return defaultDecisionTree;
-};
+}
 
-export { importDecisionTree };
 export default ConversationGuide;
