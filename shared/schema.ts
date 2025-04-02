@@ -21,8 +21,9 @@ export type User = typeof users.$inferSelect;
 // Team schema
 export const teams = pgTable("teams", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  department: text("department"),
+  name: text("name").notNull(),               // MDT-Naam
+  domain: text("domain").default('Onbekend'),  // Domein - default to prevent data loss
+  department: text("department"),             // Keep for backward compatibility
   createdAt: timestamp("created_at").defaultNow()
 });
 
@@ -32,6 +33,7 @@ export const teamsRelations = relations(teams, ({ many }) => ({
 
 export const insertTeamSchema = createInsertSchema(teams).pick({
   name: true,
+  domain: true,
   department: true
 });
 

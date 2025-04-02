@@ -8,10 +8,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Teams routes
   app.get("/api/teams", async (req, res) => {
     try {
+      console.log("Fetching teams...");
       const teams = await storage.getTeams();
+      console.log("Teams fetched successfully:", teams);
       res.json(teams);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch teams" });
+      console.error("Error fetching teams:", error);
+      res.status(500).json({ message: "Failed to fetch teams", error: String(error) });
     }
   });
 
@@ -40,6 +43,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid team data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create team" });
+    }
+  });
+  
+  app.put("/api/teams/:id", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.id);
+      const teamData = insertTeamSchema.partial().parse(req.body);
+      
+      const team = await storage.updateTeam(teamId, teamData);
+      res.json(team);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid team data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update team" });
+    }
+  });
+  
+  app.delete("/api/teams/:id", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.id);
+      const success = await storage.deleteTeam(teamId);
+      
+      if (success) {
+        res.status(200).json({ success: true, message: "Team successfully deleted" });
+      } else {
+        res.status(404).json({ success: false, message: "Team not found or could not be deleted" });
+      }
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to delete team", 
+        error: String(error) 
+      });
     }
   });
 

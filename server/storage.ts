@@ -19,6 +19,8 @@ export interface IStorage {
   getTeam(id: number): Promise<Team | undefined>;
   getTeams(): Promise<Team[]>;
   createTeam(team: InsertTeam): Promise<Team>;
+  updateTeam(id: number, team: Partial<InsertTeam>): Promise<Team>;
+  deleteTeam(id: number): Promise<boolean>;
   
   // Assessment operations
   getAssessment(id: number): Promise<Assessment | undefined>;
@@ -58,17 +60,89 @@ export class DatabaseStorage implements IStorage {
   
   // Team methods
   async getTeam(id: number): Promise<Team | undefined> {
-    const [team] = await db.select().from(teams).where(eq(teams.id, id));
-    return team;
+    try {
+      console.log(`Attempting to fetch team with id ${id}...`);
+      const [team] = await db.select().from(teams).where(eq(teams.id, id));
+      return team;
+    } catch (error) {
+      console.error(`Error fetching team with id ${id}:`, error);
+      return undefined;
+    }
   }
   
   async getTeams(): Promise<Team[]> {
-    return await db.select().from(teams);
+    try {
+      console.log("Attempting to fetch teams from database...");
+      const result = await db.select().from(teams);
+      console.log("Teams fetched successfully:", result);
+      return result;
+    } catch (error) {
+      console.error("Error in getTeams:", error);
+      // Return an empty array instead of throwing to avoid breaking the application
+      return [];
+    }
   }
   
   async createTeam(insertTeam: InsertTeam): Promise<Team> {
-    const [team] = await db.insert(teams).values(insertTeam).returning();
-    return team;
+    try {
+      console.log("Creating new team:", insertTeam);
+      const [team] = await db.insert(teams).values(insertTeam).returning();
+      console.log("Team created successfully:", team);
+      return team;
+    } catch (error) {
+      console.error("Error creating team:", error);
+      throw error;
+    }
+  }
+  
+  async updateTeam(id: number, teamData: Partial<InsertTeam>): Promise<Team> {
+    try {
+      console.log(`Updating team with id ${id}:`, teamData);
+      const [updatedTeam] = await db.update(teams)
+        .set(teamData)
+        .where(eq(teams.id, id))
+        .returning();
+      
+      if (!updatedTeam) {
+        console.error(`Team with id ${id} not found for update`);
+        throw new Error(`Team with id ${id} not found`);
+      }
+      
+      console.log("Team updated successfully:", updatedTeam);
+      return updatedTeam;
+    } catch (error) {
+      console.error(`Error updating team with id ${id}:`, error);
+      throw error;
+    }
+  }
+  
+  async deleteTeam(id: number): Promise<boolean> {
+    try {
+      // Check if team has assessments
+      const teamAssessments = await db.select().from(assessments).where(eq(assessments.teamId, id));
+      
+      if (teamAssessments.length > 0) {
+        // If assessments exist, we need to delete them first
+        for (const assessment of teamAssessments) {
+          // Delete all related answers
+          await db.delete(answers).where(eq(answers.assessmentId, assessment.id));
+          
+          // Delete any associated action plan
+          await db.delete(actionPlans).where(eq(actionPlans.assessmentId, assessment.id));
+          
+          // Delete the assessment
+          await db.delete(assessments).where(eq(assessments.id, assessment.id));
+        }
+      }
+      
+      // Finally delete the team
+      const result = await db.delete(teams).where(eq(teams.id, id)).returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error(`Error deleting team with id ${id}:`, error);
+      return false;
+    }
   }
   
   // Assessment methods
@@ -243,9 +317,9 @@ async function seedInitialData() {
   
   if (teamsCount.length === 0 || teamsCount[0].count === 0) {
     await db.insert(teams).values([
-      { name: "Frontend DevOps", department: "IT" },
-      { name: "Backend Development", department: "IT" },
-      { name: "UX/UI Team", department: "Design" }
+      { name: "Frontend DevOps", domain: "Digitale Dienstverlening", department: "IT" },
+      { name: "Backend Development", domain: "Digitale Dienstverlening", department: "IT" },
+      { name: "UX/UI Team", domain: "Burgerservices", department: "Design" }
     ]);
     console.log("Database seeded with initial teams");
   }
