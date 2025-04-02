@@ -91,9 +91,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(assessments);
       }
       
+      // If no teamId is provided, return an error for backward compatibility
       res.status(400).json({ message: "teamId query parameter is required" });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch assessments" });
+    }
+  });
+  
+  // Get all assessments endpoint
+  app.get("/api/all-assessments", async (req, res) => {
+    try {
+      console.log("Fetching all assessments...");
+      // Get all teams first
+      const teams = await storage.getTeams();
+      
+      // Then get assessments for each team
+      const assessmentPromises = teams.map(team => 
+        storage.getAssessmentsByTeam(team.id)
+      );
+      
+      const assessmentsArrays = await Promise.all(assessmentPromises);
+      const allAssessments = assessmentsArrays.flat();
+      
+      console.log(`Found ${allAssessments.length} assessments in total`);
+      res.json(allAssessments);
+    } catch (error) {
+      console.error("Error fetching all assessments:", error);
+      res.status(500).json({ message: "Failed to fetch all assessments", error: String(error) });
     }
   });
 

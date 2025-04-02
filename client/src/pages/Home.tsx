@@ -39,15 +39,8 @@ export default function Home() {
   // Fetch all assessments
   const { data: allAssessments, isLoading: isLoadingAssessments } = useQuery<Assessment[]>({
     queryKey: ["/api/all-assessments"],
-    queryFn: async () => {
-      const allTeamsPromises = teams?.map(team => 
-        fetch(`/api/assessments?teamId=${team.id}`).then(res => res.json())
-      ) || [];
-      
-      const assessmentsArrays = await Promise.all(allTeamsPromises);
-      return assessmentsArrays.flat();
-    },
-    enabled: !!teams?.length,
+    // Using the new endpoint that returns all assessments
+    enabled: true,
   });
   
   // Create new assessment mutation
