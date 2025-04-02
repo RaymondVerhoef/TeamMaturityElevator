@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/Header";
+import { Badge } from "@/components/ui/badge";
 import type { Team, Assessment } from "@shared/schema";
 
 export default function Home() {
@@ -20,6 +21,20 @@ export default function Home() {
   // Fetch teams
   const { data: teams, isLoading: isLoadingTeams } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
+  });
+  
+  // Fetch all assessments
+  const { data: allAssessments, isLoading: isLoadingAssessments } = useQuery<Assessment[]>({
+    queryKey: ["/api/all-assessments"],
+    queryFn: async () => {
+      const allTeamsPromises = teams?.map(team => 
+        fetch(`/api/assessments?teamId=${team.id}`).then(res => res.json())
+      ) || [];
+      
+      const assessmentsArrays = await Promise.all(allTeamsPromises);
+      return assessmentsArrays.flat();
+    },
+    enabled: !!teams?.length,
   });
   
   // Create new assessment mutation
@@ -148,6 +163,54 @@ export default function Home() {
                     <li>Processen & Informatie</li>
                   </ul>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Completed Assessments Section */}
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-primary mb-4">Voltooide Assessments</h2>
+            <Card>
+              <CardHeader>
+                <CardTitle>Bekijk resultaten van voltooide assessments</CardTitle>
+                <CardDescription>
+                  Hier zie je alle voltooide team assessments met hun resultaten
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingAssessments ? (
+                  <div className="py-4 text-center">Assessments laden...</div>
+                ) : allAssessments?.length ? (
+                  <div className="space-y-4">
+                    {allAssessments
+                      .filter(assessment => assessment.status === "completed")
+                      .map(assessment => {
+                        const team = teams?.find(t => t.id === assessment.teamId);
+                        return (
+                          <div key={assessment.id} className="flex items-center justify-between p-4 border rounded-md">
+                            <div>
+                              <div className="font-medium">{team?.name || 'Onbekend team'}</div>
+                              <div className="text-sm text-muted-foreground">
+                                Coach: {assessment.coachName} | Datum: {new Date(assessment.date).toLocaleDateString('nl-NL')}
+                              </div>
+                              <div className="mt-1">
+                                <Badge variant="outline" className="bg-green-50">Voltooid</Badge>
+                              </div>
+                            </div>
+                            <Link href={`/results/${assessment.id}`}>
+                              <Button size="sm">
+                                Bekijk resultaten
+                              </Button>
+                            </Link>
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">
+                    Er zijn nog geen voltooide assessments.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
