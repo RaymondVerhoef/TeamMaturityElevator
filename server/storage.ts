@@ -25,6 +25,7 @@ export interface IStorage {
   getAssessmentsByTeam(teamId: number): Promise<Assessment[]>;
   createAssessment(assessment: InsertAssessment): Promise<Assessment>;
   updateAssessmentResults(id: number, results: AssessmentResults): Promise<Assessment>;
+  deleteAssessment(id: number): Promise<boolean>;
   
   // Answer operations
   getAnswersByAssessment(assessmentId: number): Promise<Answer[]>;
@@ -105,6 +106,24 @@ export class DatabaseStorage implements IStorage {
     }
     
     return updatedAssessment;
+  }
+  
+  async deleteAssessment(id: number): Promise<boolean> {
+    try {
+      // First delete all related answers
+      await db.delete(answers).where(eq(answers.assessmentId, id));
+      
+      // Delete any associated action plan
+      await db.delete(actionPlans).where(eq(actionPlans.assessmentId, id));
+      
+      // Finally delete the assessment itself
+      const result = await db.delete(assessments).where(eq(assessments.id, id)).returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error(`Error deleting assessment with id ${id}:`, error);
+      return false;
+    }
   }
   
   // Answer methods

@@ -98,6 +98,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update assessment results" });
     }
   });
+  
+  app.delete("/api/assessments/:id", async (req, res) => {
+    try {
+      const assessmentId = parseInt(req.params.id);
+      const success = await storage.deleteAssessment(assessmentId);
+      
+      if (success) {
+        res.status(200).json({ success: true, message: "Assessment successfully deleted" });
+      } else {
+        res.status(404).json({ success: false, message: "Assessment not found or could not be deleted" });
+      }
+    } catch (error) {
+      console.error("Error deleting assessment:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to delete assessment", 
+        error: String(error) 
+      });
+    }
+  });
 
   // Answers routes
   app.get("/api/assessments/:id/answers", async (req, res) => {
